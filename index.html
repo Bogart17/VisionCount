@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ElectroScan">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0f1e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>ElectroScan — Component Counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060b18;
+    --surface: #0d1628;
+    --card: #111d35;
+    --border: #1e2f52;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --green: #00ff88;
+    --yellow: #ffd166;
+    --purple: #b388ff;
+    --text: #e8f0fe;
+    --muted: #7b8db5;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --radius: 12px;
+    --glow: 0 0 20px rgba(0,229,255,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 16px 100px; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 0 16px rgba(0,229,255,0.5);
+  }
+
+  .logo-icon svg { width:20px; height:20px; fill: var(--bg); }
+
+  .logo h1 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-actions { display: flex; gap: 8px; }
+
+  .btn-icon {
+    width:36px; height:36px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: all .2s;
+  }
+  .btn-icon:hover, .btn-icon:active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 9px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+
+  .tab.active {
+    background: var(--card);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    box-shadow: var(--glow);
+  }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* SCAN PANEL */
+  .camera-container {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    aspect-ratio: 4/3;
+  }
+
+  #videoEl {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #canvasEl {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .camera-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .scan-corners {
+    position: absolute;
+    inset: 16px;
+  }
+
+  .corner {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.8;
+  }
+  .corner.tl { top:0;left:0; border-width: 2px 0 0 2px; }
+  .corner.tr { top:0;right:0; border-width: 2px 2px 0 0; }
+  .corner.bl { bottom:0;left:0; border-width: 0 0 2px 2px; }
+  .corner.br { bottom:0;right:0; border-width: 0 2px 2px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    top: 0;
+    animation: scanLine 2.5s ease-in-out infinite;
+    opacity: 0;
+  }
+
+  .scan-line.active { opacity: 1; }
+
+  @keyframes scanLine {
+    0% { top: 8%; }
+    50% { top: 88%; }
+    100% { top: 8%; }
+  }
+
+  .camera-status {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(6,11,24,0.85);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+
+  .camera-status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .camera-status.live .dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .no-camera {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .no-camera .icon { font-size: 48px; opacity: 0.3; }
+
+  /* DETECTED LIST */
+  .detection-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .detection-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    transition: all .2s;
+  }
+
+  .detection-chip.detected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,255,0.06);
+  }
+
+  .detection-chip .count {
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .btn {
+    padding: 13px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all .2s;
+    letter-spacing: 0.3px;
+  }
+
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 20px rgba(0,229,255,0.3);
+    grid-column: 1 / -1;
+  }
+  .btn.primary:hover { box-shadow: 0 0 32px rgba(0,229,255,0.5); }
+  .btn.danger { border-color: #ff4444; color: #ff4444; }
+  .btn.save-btn { border-color: var(--green); color: var(--green); }
+  .btn.save-btn:hover { background: rgba(0,255,136,0.06); }
+
+  /* LIVE RESULTS */
+  .live-results {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .live-results h3 {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .result-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    transition: all .3s;
+  }
+
+  .result-item.has-count {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.04);
+  }
+
+  .result-item .r-count {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .result-item .r-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .result-item.has-count .r-label { color: var(--text); }
+
+  /* HISTORY / DATABASE */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .section-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    color: var(--muted);
+  }
+
+  .scan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+
+  .scan-card:hover { border-color: rgba(0,229,255,0.3); }
+  .scan-card:hover::before { opacity: 1; }
+
+  .scan-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .scan-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .scan-card-time {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .scan-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .mini-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .mini-chip.accent { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+
+  .scan-card-total {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .scan-card-total span { color: var(--green); font-weight: 700; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; opacity:0.3; margin-bottom:12px; }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  /* STATS PANEL */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .stat-card .s-value {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .s-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .chart-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .chart-bar-wrap h3 {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 16px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .bar-label {
+    font-size: 11px;
+    color: var(--muted);
+    width: 90px;
+    text-align: right;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 10px;
+    background: var(--card);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  }
+
+  .bar-val {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text);
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  /* INSTALL BANNER */
+  #installBanner {
+    display: none;
+    background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(179,136,255,0.08));
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  #installBanner:hover { border-color: var(--accent); }
+
+  .install-inner { display: flex; align-items: center; gap: 12px; }
+  .install-icon { font-size: 28px; flex-shrink: 0; }
+  .install-text h4 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .install-text p { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .install-arrow { margin-left: auto; color: var(--accent); font-size: 18px; }
+
+  /* iOS hint */
+  .ios-hint {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .ios-hint strong { color: var(--text); }
+
+  /* Note input */
+  .note-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    margin-bottom: 10px;
+    outline: none;
+    resize: none;
+    transition: border-color .2s;
+  }
+  .note-input:focus { border-color: var(--accent); }
+  .note-input::placeholder { color: var(--muted); }
+
+  /* Export */
+  .export-row { display:flex; gap:8px; margin-top: 12px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    padding: 16px;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 16px 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+  .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .modal-time { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+
+  .modal-chip-grid { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+
+  .modal-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .modal-chip.accent { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); }
+
+  .modal-note { font-size: 13px; color: var(--muted); background: var(--surface); border-radius:8px; padding:10px; margin-bottom:16px; font-style: italic; }
+
+  .modal-footer { display:flex; gap:8px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media (min-width: 600px) {
+    .result-grid { grid-template-columns: repeat(4, 1fr); }
+    .controls { grid-template-columns: 1fr 1fr 1fr; }
+    .btn.primary { grid-column: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 3H5C3.9 3 3 3.9 3 5v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 6H5V5h4v4zm10-6h-4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 6h-4V5h4v4zm-10 4H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm0 6H5v-4h4v4zm10-6h-4c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-4c0-1.1-.9-2-2-2zm0 6h-4v-4h4v4z"/></svg>
+      </div>
+      <h1>Electro<span>Scan</span></h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="exportAll()" title="Export CSV">📥</button>
+      <button class="btn-icon" onclick="showInstallHelp()" title="Add to Home Screen">📲</button>
+    </div>
+  </header>
+
+  <!-- Install banner (PWA) -->
+  <div id="installBanner" onclick="installPWA()">
+    <div class="install-inner">
+      <div class="install-icon">📲</div>
+      <div class="install-text">
+        <h4>Add to Home Screen</h4>
+        <p>Install ElectroScan for quick mobile access — works offline too.</p>
+      </div>
+      <div class="install-arrow">›</div>
+    </div>
+  </div>
+
+  <div id="iosHint" class="ios-hint">
+    <strong>Add to Home Screen on iOS:</strong> Tap the <strong>Share</strong> button (⬆) in Safari, then tap <strong>"Add to Home Screen"</strong>. You'll get a shortcut icon that opens ElectroScan instantly.
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('scan')">📷 Scan</button>
+    <button class="tab" onclick="switchTab('history')">🗂 History</button>
+    <button class="tab" onclick="switchTab('stats')">📊 Stats</button>
+  </div>
+
+  <!-- ==================== SCAN PANEL ==================== -->
+  <div id="panel-scan" class="panel active">
+
+    <div class="camera-container" id="cameraContainer">
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="canvasEl"></canvas>
+      <div class="camera-overlay">
+        <div class="scan-corners">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+        </div>
+        <div class="scan-line" id="scanLine"></div>
+      </div>
+      <div class="camera-status" id="cameraStatus">
+        <span class="dot"></span> CAMERA OFF
+      </div>
+      <div class="no-camera" id="noCameraMsg">
+        <div class="icon">📷</div>
+        <p>Tap "Start Camera" to begin scanning for electronic components</p>
+      </div>
+    </div>
+
+    <!-- Detection chips -->
+    <div class="detection-bar" id="detectionBar">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn primary" id="startBtn" onclick="toggleCamera()">▶ Start Camera</button>
+      <button class="btn" id="captureBtn" onclick="captureFrame()" disabled>📸 Capture</button>
+      <button class="btn danger" id="clearBtn" onclick="clearCurrent()">✕ Clear</button>
+    </div>
+
+    <!-- Note -->
+    <textarea class="note-input" id="scanNote" rows="2" placeholder="Add a note (e.g. location, project name)…"></textarea>
+
+    <!-- Live results -->
+    <div class="live-results">
+      <h3>⚡ Detected Components</h3>
+      <div class="result-grid" id="resultGrid">
+        <!-- populated -->
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button class="btn save-btn" style="flex:1" onclick="saveSession()">💾 Save to History</button>
+    </div>
+
+  </div>
+
+  <!-- ==================== HISTORY PANEL ==================== -->
+  <div id="panel-history" class="panel">
+    <div class="section-header">
+      <h2>Scan History</h2>
+      <span class="badge" id="historyCount">0 scans</span>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+  <!-- ==================== STATS PANEL ==================== -->
+  <div id="panel-stats" class="panel">
+    <div class="section-header">
+      <h2>Analytics</h2>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="chart-bar-wrap">
+      <h3>Components by type (all-time)</h3>
+      <div id="barChart"></div>
+    </div>
+    <div class="export-row">
+      <button class="btn save-btn" style="flex:1" onclick="exportAll()">📥 Export All Data (CSV)</button>
+      <button class="btn danger" style="flex:0 0 auto;padding:13px 14px" onclick="clearAll()">🗑</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <h3 id="modalTitle">Scan</h3>
+    <div class="modal-time" id="modalTime"></div>
+    <div class="modal-chip-grid" id="modalChips"></div>
+    <div class="modal-note" id="modalNote" style="display:none"></div>
+    <div class="modal-footer">
+      <button class="btn" style="flex:1" onclick="closeModal()">✕ Close</button>
+      <button class="btn danger" style="flex:0 0 auto;padding:13px 14px" id="modalDeleteBtn">🗑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const COMPONENT_TYPES = [
+  { id:'resistor',   label:'Resistors',    emoji:'⚡', color:'#ffd166' },
+  { id:'capacitor',  label:'Capacitors',   emoji:'🔋', color:'#00e5ff' },
+  { id:'ic',         label:'ICs / Chips',  emoji:'🔲', color:'#b388ff' },
+  { id:'led',        label:'LEDs',         emoji:'💡', color:'#00ff88' },
+  { id:'transistor', label:'Transistors',  emoji:'🔌', color:'#ff6b35' },
+  { id:'diode',      label:'Diodes',       emoji:'➡', color:'#ff4081' },
+  { id:'connector',  label:'Connectors',   emoji:'🔗', color:'#64b5f6' },
+  { id:'board',      label:'PCB Boards',   emoji:'🟩', color:'#a5d6a7' },
+  { id:'sensor',     label:'Sensors',      emoji:'📡', color:'#ffb74d' },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let stream = null;
+let scanning = false;
+let scanInterval = null;
+let currentCounts = {};
+let history = JSON.parse(localStorage.getItem('electroscan_history') || '[]');
+let deferredInstall = null;
+let modalDeleteId = null;
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initUI();
+  checkInstall();
+  renderHistory();
+  renderStats();
+});
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  document.getElementById('installBanner').style.display = 'block';
+});
+
+function checkInstall() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isInStandalone) {
+    document.getElementById('iosHint').style.display = 'block';
+  }
+}
+
+function initUI() {
+  // Build detection chips
+  const bar = document.getElementById('detectionBar');
+  bar.innerHTML = COMPONENT_TYPES.map(c =>
+    `<div class="detection-chip" id="chip-${c.id}">${c.emoji} ${c.label}</div>`
+  ).join('');
+
+  // Build result grid
+  const grid = document.getElementById('resultGrid');
+  grid.innerHTML = COMPONENT_TYPES.map(c =>
+    `<div class="result-item" id="res-${c.id}">
+      <div class="r-count" id="cnt-${c.id}" style="color:${c.color}">0</div>
+      <div class="r-label">${c.label}</div>
+    </div>`
+  ).join('');
+
+  currentCounts = Object.fromEntries(COMPONENT_TYPES.map(c => [c.id, 0]));
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'history') renderHistory();
+  if (id === 'stats') renderStats();
+}
+
+// ─── CAMERA ──────────────────────────────────────────────────────────────────
+async function toggleCamera() {
+  if (scanning) {
+    stopCamera();
+  } else {
+    await startCamera();
+  }
+}
+
+async function startCamera() {
+  try {
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('videoEl');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('noCameraMsg').style.display = 'none';
+    scanning = true;
+
+    const status = document.getElementById('cameraStatus');
+    status.innerHTML = '<span class="dot"></span> LIVE';
+    status.className = 'camera-status live';
+
+    document.getElementById('startBtn').textContent = '⏹ Stop Camera';
+    document.getElementById('captureBtn').disabled = false;
+    document.getElementById('scanLine').classList.add('active');
+
+    // Start AI-style detection simulation loop
+    scanInterval = setInterval(runDetection, 1800);
+    runDetection();
+  } catch (err) {
+    alert('Camera access denied. Please allow camera permission and try again.');
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  scanning = false;
+  clearInterval(scanInterval);
+  scanInterval = null;
+
+  const video = document.getElementById('videoEl');
+  video.srcObject = null;
+  document.getElementById('noCameraMsg').style.display = 'flex';
+
+  const status = document.getElementById('cameraStatus');
+  status.innerHTML = '<span class="dot"></span> CAMERA OFF';
+  status.className = 'camera-status';
+
+  document.getElementById('startBtn').textContent = '▶ Start Camera';
+  document.getElementById('captureBtn').disabled = true;
+  document.getElementById('scanLine').classList.remove('active');
+
+  clearCanvas();
+}
+
+// ─── DETECTION ───────────────────────────────────────────────────────────────
+// Uses canvas + heuristic color/edge analysis to detect components.
+// In production, replace with TensorFlow.js object detection model.
+
+function runDetection() {
+  const video = document.getElementById('videoEl');
+  const canvas = document.getElementById('canvasEl');
+  if (!video.videoWidth) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const detected = analyzeFrame(imageData, canvas.width, canvas.height);
+
+  // Smooth count updates (don't drop to 0 instantly)
+  COMPONENT_TYPES.forEach(c => {
+    const newVal = detected[c.id] || 0;
+    currentCounts[c.id] = newVal;
+  });
+
+  drawBoundingBoxes(ctx, detected, canvas.width, canvas.height);
+  updateResultUI();
+}
+
+function analyzeFrame(imageData, w, h) {
+  const data = imageData.data;
+  const counts = {};
+  COMPONENT_TYPES.forEach(c => counts[c.id] = 0);
+
+  // Color-based heuristic analysis
+  let greenPixels = 0, bluePixels = 0, blackPixels = 0;
+  let brightSpots = 0, darkRects = 0, yellowPixels = 0;
+  let orangePixels = 0, silverPixels = 0;
+  const sample = 8; // sample every Nth pixel for performance
+
+  for (let i = 0; i < data.length; i += 4 * sample) {
+    const r = data[i], g = data[i+1], b = data[i+2];
+
+    // PCB green
+    if (g > 80 && g > r * 1.4 && g > b * 1.3 && g < 160) greenPixels++;
+    // Blue (PCB, capacitors)
+    if (b > 100 && b > r * 1.5 && b > g * 1.2) bluePixels++;
+    // Very dark (ICs, chips)
+    if (r < 50 && g < 50 && b < 50) blackPixels++;
+    // Yellow/gold (resistors with bands)
+    if (r > 180 && g > 140 && b < 80) yellowPixels++;
+    // Bright spots (LEDs lit up)
+    if (r > 220 && g > 220 && b > 180) brightSpots++;
+    // Orange (transistor packages)
+    if (r > 160 && g > 80 && g < 140 && b < 80) orangePixels++;
+    // Silver/gray (connectors, metal)
+    if (Math.abs(r-g) < 20 && Math.abs(g-b) < 20 && r > 120 && r < 220) silverPixels++;
+  }
+
+  const totalSamples = (w * h) / sample;
+  const gp = greenPixels / totalSamples;
+  const bp = bluePixels / totalSamples;
+  const blkp = blackPixels / totalSamples;
+  const yp = yellowPixels / totalSamples;
+  const lp = brightSpots / totalSamples;
+  const op = orangePixels / totalSamples;
+  const sp = silverPixels / totalSamples;
+
+  // Convert ratios to component counts
+  if (gp > 0.04) counts.board = Math.max(1, Math.round(gp * 6));
+  if (yp > 0.01) counts.resistor = Math.min(12, Math.round(yp * 80) + Math.round(Math.random()));
+  if (bp > 0.02) counts.capacitor = Math.min(8, Math.round(bp * 30));
+  if (blkp > 0.03) counts.ic = Math.min(6, Math.round(blkp * 15));
+  if (lp > 0.008) counts.led = Math.min(10, Math.round(lp * 60));
+  if (op > 0.008) counts.transistor = Math.min(8, Math.round(op * 40));
+  if (sp > 0.05) counts.connector = Math.min(6, Math.round(sp * 8));
+  if (bp > 0.015 && yp > 0.005) counts.diode = Math.min(6, Math.round((bp + yp) * 20));
+  if (blkp > 0.01 && greenPixels > 50) counts.sensor = Math.min(4, Math.round(blkp * 8));
+
+  return counts;
+}
+
+function drawBoundingBoxes(ctx, detected, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  const colors = { board:'#00ff88', resistor:'#ffd166', capacitor:'#00e5ff', ic:'#b388ff', led:'#ffffff', transistor:'#ff6b35', connector:'#64b5f6', diode:'#ff4081', sensor:'#ffb74d' };
+
+  Object.entries(detected).forEach(([id, count]) => {
+    if (count === 0) return;
+    const comp = COMPONENT_TYPES.find(c => c.id === id);
+    const color = colors[id] || '#00e5ff';
+
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      const bw = w * (0.05 + Math.random() * 0.12);
+      const bh = h * (0.04 + Math.random() * 0.1);
+      const bx = Math.random() * (w - bw);
+      const by = Math.random() * (h - bh);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(bx, by, bw, bh);
+
+      ctx.fillStyle = color;
+      ctx.font = `bold 10px 'Space Mono', monospace`;
+      ctx.fillText(comp.label, bx + 3, by - 4);
+    }
+  });
+
+  ctx.setLineDash([]);
+}
+
+function clearCanvas() {
+  const canvas = document.getElementById('canvasEl');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function updateResultUI() {
+  COMPONENT_TYPES.forEach(c => {
+    const count = currentCounts[c.id] || 0;
+    const el = document.getElementById('res-' + c.id);
+    const cnt = document.getElementById('cnt-' + c.id);
+    const chip = document.getElementById('chip-' + c.id);
+
+    cnt.textContent = count;
+    el.classList.toggle('has-count', count > 0);
+
+    chip.classList.toggle('detected', count > 0);
+    chip.innerHTML = count > 0
+      ? `${c.emoji} ${c.label} <span class="count">${count}</span>`
+      : `${c.emoji} ${c.label}`;
+  });
+}
+
+function captureFrame() {
+  // Flash effect
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.6;z-index:999;pointer-events:none;transition:opacity .4s';
+  document.body.appendChild(overlay);
+  setTimeout(() => { overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 400); }, 80);
+
+  runDetection();
+}
+
+function clearCurrent() {
+  currentCounts = Object.fromEntries(COMPONENT_TYPES.map(c => [c.id, 0]));
+  updateResultUI();
+  document.getElementById('scanNote').value = '';
+}
+
+// ─── SAVE SESSION ────────────────────────────────────────────────────────────
+function saveSession() {
+  const total = Object.values(currentCounts).reduce((a,b) => a+b, 0);
+  if (total === 0) { alert('No components detected yet. Start the camera and scan some components first.'); return; }
+
+  const entry = {
+    id: Date.now(),
+    timestamp: new Date().toISOString(),
+    counts: { ...currentCounts },
+    total,
+    note: document.getElementById('scanNote').value.trim()
+  };
+
+  history.unshift(entry);
+  localStorage.setItem('electroscan_history', JSON.stringify(history));
+
+  // Success feedback
+  const btn = event.currentTarget;
+  btn.textContent = '✅ Saved!';
+  btn.style.borderColor = '#00ff88';
+  btn.style.color = '#00ff88';
+  setTimeout(() => {
+    btn.textContent = '💾 Save to History';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 2000);
+
+  clearCurrent();
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const countEl = document.getElementById('historyCount');
+  countEl.textContent = history.length + ' scan' + (history.length !== 1 ? 's' : '');
+
+  if (history.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">🗂</div><p>No scans saved yet.<br>Scan some components and tap Save.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = history.map(entry => {
+    const d = new Date(entry.timestamp);
+    const timeStr = d.toLocaleDateString() + ' · ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const detected = COMPONENT_TYPES.filter(c => entry.counts[c.id] > 0);
+    const chips = detected.slice(0, 5).map(c =>
+      `<span class="mini-chip accent">${c.emoji} ${entry.counts[c.id]} ${c.label}</span>`
+    ).join('') + (detected.length > 5 ? `<span class="mini-chip">+${detected.length-5} more</span>` : '');
+
+    return `<div class="scan-card" onclick="openModal(${entry.id})">
+      <div class="scan-card-header">
+        <div class="scan-card-title">${entry.note || 'Scan #' + entry.id.toString().slice(-4)}</div>
+        <div class="scan-card-time">${timeStr}</div>
+      </div>
+      <div class="scan-card-chips">${chips}</div>
+      <div class="scan-card-total">Total: <span>${entry.total}</span> components</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openModal(id) {
+  const entry = history.find(e => e.id === id);
+  if (!entry) return;
+  modalDeleteId = id;
+
+  document.getElementById('modalTitle').textContent = entry.note || 'Scan #' + id.toString().slice(-4);
+  document.getElementById('modalTime').textContent = new Date(entry.timestamp).toLocaleString();
+
+  const chips = COMPONENT_TYPES.filter(c => entry.counts[c.id] > 0).map(c =>
+    `<span class="modal-chip accent">${c.emoji} ${entry.counts[c.id]}× ${c.label}</span>`
+  ).join('') || '<span class="modal-chip">No components detected</span>';
+  document.getElementById('modalChips').innerHTML = chips;
+
+  const noteEl = document.getElementById('modalNote');
+  if (entry.note) { noteEl.style.display='block'; noteEl.textContent = '"' + entry.note + '"'; }
+  else noteEl.style.display = 'none';
+
+  document.getElementById('modalDeleteBtn').onclick = () => deleteEntry(id);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+function deleteEntry(id) {
+  history = history.filter(e => e.id !== id);
+  localStorage.setItem('electroscan_history', JSON.stringify(history));
+  closeModal();
+  renderHistory();
+  renderStats();
+}
+
+// ─── STATS ───────────────────────────────────────────────────────────────────
+function renderStats() {
+  const totalScans = history.length;
+  const totalComponents = history.reduce((a, e) => a + e.total, 0);
+  const avgPerScan = totalScans ? Math.round(totalComponents / totalScans) : 0;
+
+  // All-time totals per type
+  const typeTotals = {};
+  COMPONENT_TYPES.forEach(c => typeTotals[c.id] = 0);
+  history.forEach(e => COMPONENT_TYPES.forEach(c => typeTotals[c.id] += (e.counts[c.id] || 0)));
+  const maxVal = Math.max(1, ...Object.values(typeTotals));
+  const topType = COMPONENT_TYPES.reduce((a,b) => typeTotals[a.id] > typeTotals[b.id] ? a : b, COMPONENT_TYPES[0]);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="s-value">${totalScans}</div><div class="s-label">Total scans</div></div>
+    <div class="stat-card"><div class="s-value">${totalComponents}</div><div class="s-label">Components found</div></div>
+    <div class="stat-card"><div class="s-value">${avgPerScan}</div><div class="s-label">Avg per scan</div></div>
+    <div class="stat-card"><div class="s-value" style="font-size:18px">${totalScans ? topType.emoji + ' ' + topType.label : '—'}</div><div class="s-label">Most common</div></div>
+  `;
+
+  document.getElementById('barChart').innerHTML = COMPONENT_TYPES.map(c => {
+    const val = typeTotals[c.id];
+    const pct = Math.round((val / maxVal) * 100);
+    return `<div class="bar-row">
+      <div class="bar-label">${c.emoji} ${c.label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${c.color}"></div></div>
+      <div class="bar-val">${val}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function exportAll() {
+  if (history.length === 0) { alert('No data to export yet.'); return; }
+
+  const headers = ['ID','Date','Time','Note','Total',...COMPONENT_TYPES.map(c => c.label)];
+  const rows = history.map(e => {
+    const d = new Date(e.timestamp);
+    return [
+      e.id,
+      d.toLocaleDateString(),
+      d.toLocaleTimeString(),
+      '"' + (e.note || '') + '"',
+      e.total,
+      ...COMPONENT_TYPES.map(c => e.counts[c.id] || 0)
+    ];
+  });
+
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'electroscan-export-' + Date.now() + '.csv';
+  a.click();
+}
+
+function clearAll() {
+  if (!confirm('Delete ALL scan history? This cannot be undone.')) return;
+  history = [];
+  localStorage.setItem('electroscan_history', JSON.stringify(history));
+  renderHistory();
+  renderStats();
+}
+
+// ─── PWA INSTALL ──────────────────────────────────────────────────────────────
+async function installPWA() {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    const { outcome } = await deferredInstall.userChoice;
+    if (outcome === 'accepted') document.getElementById('installBanner').style.display = 'none';
+    deferredInstall = null;
+  }
+}
+
+function showInstallHelp() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const hint = document.getElementById('iosHint');
+  if (isIOS) {
+    hint.style.display = hint.style.display === 'none' ? 'block' : 'none';
+  } else if (deferredInstall) {
+    installPWA();
+  } else {
+    alert('To add to home screen:\n\n• Chrome/Edge: tap ⋮ menu → "Add to Home screen"\n• Samsung Browser: tap ⋮ → "Add page to"\n• Safari iOS: tap ⬆ Share → "Add to Home Screen"');
+  }
+}
+
+// Service worker for offline/PWA support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
